@@ -1,0 +1,79 @@
+---- ECR
+
+# Set your AWS region and account ID
+AWS_REGION=<your-region>
+AWS_ACCOUNT_ID=<your-account-id>
+
+# Create the ECR repository if it doesn't exist
+aws ecr create-repository --repository-name websocket-data-service --region $AWS_REGION
+
+# Log in to ECR
+aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+
+# Build the Docker image
+docker build -t websocket-data-service .
+
+# Tag the image for ECR
+docker tag websocket-data-service:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/websocket-data-service:latest
+
+# Push the image to ECR
+docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/websocket-data-service:latest
+
+--- CReate a task defenetion
+aws ecs register-task-definition --cli-input-json file://ecs-task-definition.json
+
+-- aws create service
+aws ecs create-service \
+  --cluster <<Cluster Name>> \
+  --service-name websocket-data-service \
+  --task-definition websocket-data-service:1 \
+  --desired-count 1 \
+  --launch-type FARGATE \
+  --network-configuration "awsvpcConfiguration={subnets=[subnet-#####],securityGroups=[sg-######],assignPublicIp=ENABLED}" \
+  --health-check-grace-period-seconds 120
+  
+  
+----- Service with ALB  
+
+
+# Step 1: Create a target group
+aws elbv2 create-target-group \
+  --name websocket-tg \
+  --protocol HTTP \
+  --port 8000 \
+  --vpc-id vpc-###### \
+  --target-type ip \
+  --health-check-path /health \
+  --health-check-interval-seconds 30 \
+  --health-check-timeout-seconds 5 \
+  --healthy-threshold-count 2 \
+  --unhealthy-threshold-count 2
+  
+  
+# Step 2: Create an Application Load Balancer
+aws elbv2 create-load-balancer \
+  --name websocket-alb \
+  --subnets subnet-###### subnet-###### \
+  --security-groups sg-########
+    
+# Step 3: Create a listener on the ALB
+aws elbv2 create-listener \
+  --load-balancer-arn <alb-arn-from-step-2-output> \
+  --protocol HTTP \
+  --port 80 \
+  --default-actions Type=forward,TargetGroupArn=<target-group-arn-from-step-1-output>
+  
+# Step 4: Create the ECS service with the ALB
+aws ecs create-service \
+  --cluster << Cluster Name>> \
+  --service-name websocket-data-service \
+  --task-definition websocket-data-service:1 \
+  --desired-count 1 \
+  --launch-type FARGATE \
+  --network-configuration "awsvpcConfiguration={subnets=[subnet-######],securityGroups=[sg-########],assignPublicIp=ENABLED}" \
+  --health-check-grace-period-seconds 120 \
+  --load-balancers "targetGroupArn=<target-group-arn-from-step-1-output>,containerName=websocket-app,containerPort=8000"
+    
+
+to get ALB DNS    
+aws elbv2 describe-load-balancers --names websocket-alb --query 'LoadBalancers[0].DNSName' --output text    

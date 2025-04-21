@@ -1,0 +1,59 @@
+{
+  "family": "websocket-data-service",
+  "networkMode": "awsvpc",
+  "executionRoleArn": "arn:aws:iam::<<Accountnum>>:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::<<Accountnum>>:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "websocket-app",
+      "image": "<<Accountnum>>.dkr.ecr.us-east-1.amazonaws.com/websocket-data-service:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "hostPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "LOOKBACK_MINUTES",
+          "value": "5"
+        },
+        {
+          "name": "REFRESH_SECONDS",
+          "value": "5"
+        },
+        {
+          "name": "DB_USER",
+          "value": "postgres"
+        },
+        {
+          "name": "DB_PASS",
+          "value": "postgres042025"
+        },
+        {
+          "name": "DB_HOST",
+          "value": "wsdemo.cluster-cnfb9e59fq2z.us-east-1.rds.amazonaws.com"
+        },
+        {
+          "name": "DB_NAME",
+          "value": "postgres"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/websocket-data-service",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ],
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "512",
+  "memory": "1024"
+}

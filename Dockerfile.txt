@@ -1,0 +1,21 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY app.py .
+
+EXPOSE 8000
+
+# Set environment variables (these can be overridden at runtime)
+ENV LOOKBACK_MINUTES=5
+ENV REFRESH_SECONDS=5
+ENV DB_USER=develop
+ENV DB_PASS=password
+ENV DB_HOST=localhost
+ENV DB_NAME=develop
+
+# Run the FastAPI application with Uvicorn
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
